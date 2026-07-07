@@ -433,7 +433,7 @@ const PROCESS_MAP = [
   [/anaerob|ana[ée]robi/i, "Anaérobie"],
   [/honey (?:rouge|red)|red honey/i, "Honey rouge"],
   [/honey (?:noir|black)|black honey/i, "Honey noir"],
-  [/honey|miel[ée]|hunaja/i, "Honey"],
+  [/honey|miel[ée]|hunaja(?!mainen)/i, "Honey"],
   [/wet[- ]?hulled|giling basah/i, "Wet-hulled (Giling Basah)"],
   [/lav[ée]|washed|pesty|tv[äa]ttad/i, "Lavé"],
   [/naturel?|natural|dry process|kuivaprosessoitu|luonnollinen|soltorkad|naturlig/i, "Naturel"],
@@ -446,36 +446,62 @@ const VARIETIES = ["Geisha", "Gesha", "Bourbon", "Typica", "Caturra", "Catuaí",
 const stripAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-async function tryFetch(attempts) {
-  for (const attempt of attempts) {
+/* Sources de lecture, essayées tour à tour : accès direct, deux relais
+   CORS, puis r.jina.ai (rendu JavaScript). Chaque réponse est analysée
+   et NOTÉE — un relais peut renvoyer une page d'erreur « 200 OK » vide,
+   la notation évite de s'arrêter sur ce faux contenu. */
+const PAGE_SOURCES = [
+  (u) => fetch(u),
+  (u) => fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(u)),
+  (u) => fetch("https://corsproxy.io/?url=" + encodeURIComponent(u)),
+  (u) => fetch("https://r.jina.ai/" + u),
+];
+
+function scoreFound(f) {
+  if (!f) return -1;
+  return ["pays", "type", "provenance", "traitement", "altitude"].filter((k) => f[k]).length
+    + (f.aromes && f.aromes.length ? 1 : 0);
+}
+
+function mergeFound(base, extra) {
+  if (!base) return extra;
+  for (const k of Object.keys(extra)) {
+    if (k === "aromes") continue;
+    if (!base[k] || (k === "infosWeb" && extra[k] && extra[k].length > base[k].length)) base[k] = extra[k];
+  }
+  const seen = new Set((base.aromes || []).map((a) => a.toLowerCase()));
+  base.aromes = [...(base.aromes || []),
+    ...(extra.aromes || []).filter((a) => !seen.has(a.toLowerCase()))].slice(0, 8);
+  return base;
+}
+
+async function analyzeUrl(url, onProgress) {
+  const parses = [];
+  for (let i = 0; i < PAGE_SOURCES.length; i++) {
+    if (onProgress) onProgress(i + 1, PAGE_SOURCES.length);
     try {
-      const resp = await attempt();
+      const resp = await PAGE_SOURCES[i](url);
       if (!resp.ok) continue;
       const text = await resp.text();
-      if (text && text.length > 200) return text;
-    } catch { /* tentative suivante */ }
+      if (!text || text.length < 200) continue;
+      const found = parseRoasterPage(text, url);
+      found._score = scoreFound(found);
+      parses.push(found);
+      if (found._score >= 4) break; // fiche suffisamment complète
+    } catch { /* source suivante */ }
   }
-  return null;
-}
-
-/* HTML brut de la page (rapide, contient JSON-LD et balises meta). */
-function fetchPageStatic(url) {
-  return tryFetch([
-    () => fetch(url),
-    () => fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url)),
-    () => fetch("https://corsproxy.io/?url=" + encodeURIComponent(url)),
-  ]);
-}
-
-/* Version rendue avec JavaScript (r.jina.ai) : plus lente, mais voit le
-   contenu des boutiques qui chargent leurs fiches produit dynamiquement. */
-function fetchPageRendered(url) {
-  return tryFetch([() => fetch("https://r.jina.ai/" + url)]);
+  if (!parses.length) return null;
+  // Fusion : les valeurs des lectures les mieux notées ont priorité
+  parses.sort((a, b) => b._score - a._score);
+  let merged = null;
+  for (const p of parses) merged = mergeFound(merged, p);
+  delete merged._score;
+  return merged;
 }
 
 /* Tous les libellés reconnus — sert à rejeter une « valeur » qui serait
    en réalité le libellé suivant (mises en page en tableau). */
-const ANY_LABEL_RE = /^(?:origine?|origin|pays|country|alkuper[aä]|alkuper[aä]maa|maa|ursprung|ursprungsland|land|r[ée]gion|region|provenance|zone|alue|seutu|omr[aå]de|ferme|farm|finca|fazenda|hacienda|producteur|producer|station|coop[ée]rative|cooperative|tila|tuottaja|viljelij[aä]|g[aå]rd|producent|odlare|kooperativ|vari[ée]t[ée]s?|variet(?:y|al|ies)|cultivar|lajike|kahvilajike|sort|varietet|process(?:ing)?|proc[ée]d[ée]|traitement|m[ée]thode|method|fermentation|k[aä]sittely(?:tapa)?|prosessi|menetelm[aä]|bearbetning|beredning|metod|altitude|elevation|korkeus|kasvukorkeus|h[oö]jd|torr[ée]facteur|roaster|roastery|paahtimo|rosteri|notes?|ar[ôo]mes?|profil|maku|aromit|smak|toner)\s*[:：]?\s*$/i;
+const ANY_LABEL_RE = /^(?:origine?|origin|pays|country|alkuper[aä]|alkuper[aä]maa|maa|ursprung|ursprungsland|land|r[ée]gion|region|provenance|zone|alue|seutu|omr[aå]de|ferme|farm|finca|fazenda|hacienda|producteur|producer|station|coop[ée]rative|cooperative|tila|tuottaja|viljelij[aä]|g[aå]rd|producent|odlare|kooperativ|vari[ée]t[ée]s?|variet(?:y|al|ies)|cultivar|lajike|kahvilajike|sort|varietet|process(?:ing)?|proc[ée]d[ée]|traitement|m[ée]thode|method|fermentation|(?:kahvin\s+)?prosessointi|k[aä]sittely(?:tapa)?|prosessi|menetelm[aä]|bearbetning|beredning|metod|altitude|elevation|korkeus|kasvukorkeus|h[oö]jd|paahtoaste|rostningsgrad|torr[ée]facteur|roaster|roastery|paahtimo|rosteri|notes?|ar[ôo]mes?|profil|maku|aromit|smak|toner)\s*[:：]?\s*$/i;
 
 function labelValue(text, labelRe) {
   const val = "([^\\n\\r|•]{2,90})";
@@ -542,7 +568,7 @@ function parseRoasterPage(raw, url) {
   const altitude = labelValue(text, "altitude|elevation|korkeus|kasvukorkeus|odlingsh[oö]jd|h[oö]jd(?:\\s*[oö]ver havet)?");
   const paysLabel = labelValue(text, "origine|origin|pays|country|alkuper[aä]maa|alkuper[aä]|maa|ursprungsland|ursprung|land");
   const varieteLabel = labelValue(text, "vari[ée]t[ée]s?|variet(?:y|al|ies)|cultivar|lajike|kahvilajike|varietet|sort");
-  const processLabel = labelValue(text, "process(?:ing)?(?:\\s*method)?|proc[ée]d[ée]|traitement|m[ée]thode|method|fermentation|k[aä]sittely(?:tapa)?|prosessi|menetelm[aä]|bearbetning|beredning|metod");
+  const processLabel = labelValue(text, "process(?:ing)?(?:\\s*method)?|proc[ée]d[ée]|traitement|m[ée]thode|method|fermentation|(?:kahvin\\s+)?prosessointi|k[aä]sittely(?:tapa)?|prosessi|menetelm[aä]|bearbetning|beredning|metod");
   let notesLabel = labelValue(text, "notes? de d[ée]gustation|notes? aromatiques|tasting notes?|cup notes?|flavou?r notes?|cupping notes?|ar[ôo]mes?|profil aromatique|makuprofiili|aromit|makuja|maku|smaknoter|smakprofil|smak|toner|aromer|notes?|profil");
   // Arômes exprimés en phrase : « notes of chocolate », « toner av choklad », « maistuu suklaalta »
   if (!notesLabel) {
@@ -590,12 +616,15 @@ function parseRoasterPage(raw, url) {
       .slice(0, 8);
   }
 
-  // Torréfacteur : nom du site, sinon domaine
+  // Torréfacteur : nom du site, sinon domaine principal (en ignorant les
+  // sous-domaines boutique : kauppa.cafesolo.fi → Cafesolo, pas « Kauppa »)
   found.torrefacteur = (siteName || "").trim().slice(0, 60);
   if (!found.torrefacteur) {
     try {
-      const host = new URL(url).hostname.replace(/^www\./, "");
-      found.torrefacteur = cap(host.split(".")[0].replace(/[-_]/g, " "));
+      const parts = new URL(url).hostname.replace(/^www\./, "").split(".");
+      let label = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+      if (/^(co|com|net|org)$/i.test(label) && parts.length > 2) label = parts[parts.length - 3];
+      found.torrefacteur = cap(label.replace(/[-_]/g, " "));
     } catch { /* URL invalide */ }
   }
 
@@ -629,32 +658,9 @@ $("#btn-analyze").addEventListener("click", async () => {
   status.textContent = "Lecture de la page… (quelques secondes)";
 
   try {
-    // Passe 1 : HTML brut (rapide, contient les données structurées)
-    const raw = await fetchPageStatic(url);
-    let found = raw ? parseRoasterPage(raw, url) : null;
-
-    // Passe 2 : si trop peu d'infos (boutique chargée en JavaScript),
-    // relecture de la page rendue puis fusion des résultats.
-    const score = (f) => !f ? 0 :
-      ["pays", "type", "provenance", "traitement", "altitude"].filter((k) => f[k]).length
-      + (f.aromes && f.aromes.length ? 1 : 0);
-    if (score(found) < 3) {
-      status.textContent = "Page dynamique détectée, lecture approfondie… (quelques secondes de plus)";
-      const rendered = await fetchPageRendered(url);
-      if (rendered) {
-        const f2 = parseRoasterPage(rendered, url);
-        if (!found) found = f2;
-        else {
-          for (const k of Object.keys(f2)) {
-            if (k === "aromes") continue;
-            if (!found[k] || (k === "infosWeb" && f2[k] && f2[k].length > found[k].length)) found[k] = f2[k];
-          }
-          const seen = new Set((found.aromes || []).map((a) => a.toLowerCase()));
-          found.aromes = [...(found.aromes || []),
-            ...(f2.aromes || []).filter((a) => !seen.has(a.toLowerCase()))].slice(0, 8);
-        }
-      }
-    }
+    const found = await analyzeUrl(url, (i, n) => {
+      status.textContent = `Lecture de la page… (source ${i}/${n})`;
+    });
     if (!found) {
       status.textContent = "Impossible de lire cette page (site protégé ?). Copiez les infos à la main dans « Infos du site ».";
       return;
