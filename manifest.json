@@ -1,0 +1,32 @@
+{
+  "name": "Carnet Café — Catalogue de cafés de spécialité",
+  "short_name": "Carnet Café",
+  "description": "Catalogue personnel de cafés de spécialité : origines, traitements, arômes et notes de dégustation.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c130d",
+  "theme_color": "#1c130d",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

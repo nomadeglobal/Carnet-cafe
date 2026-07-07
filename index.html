@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1c130d">
+  <script>
+    // Applique le thème mémorisé avant le premier rendu (évite un flash)
+    document.documentElement.dataset.theme = localStorage.getItem("carnet-theme") || "moka";
+  </script>
+  <title>Carnet Café — Mon catalogue de cafés de spécialité</title>
+  <meta name="description" content="Catalogue personnel de cafés de spécialité : origines, traitements, arômes et notes de dégustation.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ======== EN-TÊTE ======== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">☕</span>
+        <div>
+          <h1>Carnet Café</h1>
+          <p class="brand-sub">Mon catalogue de cafés de spécialité</p>
+        </div>
+      </div>
+      <button class="icon-btn" id="btn-settings" title="Sauvegarde et options" aria-label="Options">⚙</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ======== VUE CATALOGUE ======== -->
+    <section id="view-catalogue" class="view active">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input type="search" id="search-input" placeholder="Rechercher un café, un pays, un arôme…" autocomplete="off">
+        </div>
+        <div class="sort-row">
+          <label for="sort-select" class="sort-label">Trier par</label>
+          <select id="sort-select">
+            <option value="createdAt-desc">Ajout récent</option>
+            <option value="note-desc">Note ★ (meilleurs d'abord)</option>
+            <option value="note-asc">Note ★ (croissant)</option>
+            <option value="dateAchat-desc">Date d'achat (récent)</option>
+            <option value="dateAchat-asc">Date d'achat (ancien)</option>
+            <option value="dateTorrefaction-desc">Torréfaction (récente)</option>
+            <option value="dateTorrefaction-asc">Torréfaction (ancienne)</option>
+            <option value="altitude-desc">Altitude (plus haute)</option>
+            <option value="altitude-asc">Altitude (plus basse)</option>
+            <option value="nom-asc">Nom A → Z</option>
+            <option value="pays-asc">Pays A → Z</option>
+            <option value="type-asc">Type / variété A → Z</option>
+            <option value="provenance-asc">Provenance A → Z</option>
+            <option value="traitement-asc">Traitement A → Z</option>
+            <option value="torrefacteur-asc">Torréfacteur A → Z</option>
+          </select>
+          <button class="chip-toggle" id="btn-filters" aria-expanded="false">Filtres <span id="filter-count" class="filter-badge" hidden></span></button>
+        </div>
+        <div class="filters-panel" id="filters-panel" hidden>
+          <div class="filter-group"><h4>Pays d'origine</h4><div class="chips" id="filter-pays"></div></div>
+          <div class="filter-group"><h4>Traitement</h4><div class="chips" id="filter-traitement"></div></div>
+          <div class="filter-group"><h4>Torréfacteur</h4><div class="chips" id="filter-torrefacteur"></div></div>
+          <div class="filter-group"><h4>Type / variété</h4><div class="chips" id="filter-type"></div></div>
+          <button class="btn-text" id="btn-clear-filters">Réinitialiser les filtres</button>
+        </div>
+      </div>
+
+      <p class="result-count" id="result-count"></p>
+      <div class="card-grid" id="card-grid"></div>
+
+      <div class="empty-state" id="empty-state" hidden>
+        <div class="empty-cup">☕</div>
+        <h2>Votre carnet est vide</h2>
+        <p>Ajoutez votre premier café de spécialité pour commencer votre collection.</p>
+        <button class="btn-primary" id="btn-empty-add">+ Ajouter un café</button>
+      </div>
+    </section>
+
+    <!-- ======== VUE FORMULAIRE ======== -->
+    <section id="view-form" class="view">
+      <h2 class="view-title" id="form-title">Nouveau café</h2>
+      <form id="coffee-form" novalidate>
+        <input type="hidden" id="f-id">
+
+        <div class="web-import">
+          <label for="f-siteUrl">🔗 Page du café sur le site du torréfacteur</label>
+          <div class="web-import-row">
+            <input type="url" id="f-siteUrl" placeholder="https://…" inputmode="url" autocomplete="off">
+            <button type="button" class="btn-secondary" id="btn-analyze">Analyser</button>
+          </div>
+          <p class="hint" id="analyze-status">Collez le lien de la page produit : origine, traitement, arômes… seront remplis automatiquement.</p>
+        </div>
+
+        <div class="photo-field">
+          <div class="photo-preview" id="photo-preview">
+            <span class="photo-placeholder">📷<br>Photo du paquet</span>
+          </div>
+          <div class="photo-actions">
+            <label class="btn-secondary photo-btn">
+              📸 Prendre une photo
+              <input type="file" id="f-photo-camera" accept="image/*" capture="environment" hidden>
+            </label>
+            <label class="btn-secondary photo-btn">
+              🖼 Choisir une image
+              <input type="file" id="f-photo-gallery" accept="image/*" hidden>
+            </label>
+            <button type="button" class="btn-text danger" id="btn-remove-photo" hidden>Retirer la photo</button>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="f-nom">Nom du café <span class="req">*</span></label>
+            <input type="text" id="f-nom" placeholder="ex. Finca El Paraíso" required>
+          </div>
+
+          <div class="field">
+            <label for="f-pays">Pays d'origine</label>
+            <input type="text" id="f-pays" list="dl-pays" placeholder="ex. Éthiopie">
+            <datalist id="dl-pays">
+              <option>Éthiopie</option><option>Colombie</option><option>Brésil</option>
+              <option>Kenya</option><option>Guatemala</option><option>Costa Rica</option>
+              <option>Honduras</option><option>Panama</option><option>Pérou</option>
+              <option>Rwanda</option><option>Burundi</option><option>Indonésie</option>
+              <option>Inde</option><option>Yémen</option><option>Salvador</option>
+              <option>Nicaragua</option><option>Mexique</option><option>Bolivie</option>
+            </datalist>
+          </div>
+
+          <div class="field">
+            <label for="f-type">Type / variété</label>
+            <input type="text" id="f-type" list="dl-type" placeholder="ex. Geisha, Bourbon…">
+            <datalist id="dl-type">
+              <option>Arabica</option><option>Robusta</option><option>Assemblage (blend)</option>
+              <option>Geisha</option><option>Bourbon</option><option>Typica</option>
+              <option>Caturra</option><option>Catuaí</option><option>SL28</option>
+              <option>SL34</option><option>Pacamara</option><option>Heirloom</option>
+              <option>Castillo</option><option>Mundo Novo</option>
+            </datalist>
+          </div>
+
+          <div class="field span-2">
+            <label for="f-provenance">Provenance (région, ferme, coopérative)</label>
+            <input type="text" id="f-provenance" placeholder="ex. Yirgacheffe, ferme Chelbesa">
+          </div>
+
+          <div class="field">
+            <label for="f-traitement">Traitement</label>
+            <input type="text" id="f-traitement" list="dl-traitement" placeholder="ex. Lavé">
+            <datalist id="dl-traitement">
+              <option>Lavé</option><option>Naturel</option><option>Honey</option>
+              <option>Honey rouge</option><option>Honey noir</option><option>Anaérobie</option>
+              <option>Co-fermenté</option><option>Macération carbonique</option>
+              <option>Wet-hulled (Giling Basah)</option><option>Décaféiné</option>
+            </datalist>
+          </div>
+
+          <div class="field">
+            <label for="f-torrefacteur">Torréfacteur</label>
+            <input type="text" id="f-torrefacteur" list="dl-torrefacteur" placeholder="ex. Belleville">
+            <datalist id="dl-torrefacteur"></datalist>
+          </div>
+
+          <div class="field">
+            <label for="f-altitude">Altitude (MASL)</label>
+            <input type="text" id="f-altitude" inputmode="numeric" placeholder="ex. 1900–2100 m">
+          </div>
+
+          <div class="field">
+            <label for="f-dateTorrefaction">Date de torréfaction</label>
+            <input type="date" id="f-dateTorrefaction">
+          </div>
+
+          <div class="field span-2">
+            <label for="f-aromes-input">Arômes</label>
+            <div class="tags-input" id="aromes-box">
+              <div class="tags" id="aromes-tags"></div>
+              <input type="text" id="f-aromes-input" list="dl-aromes" placeholder="Tapez un arôme puis Entrée…">
+              <datalist id="dl-aromes">
+                <option>Chocolat</option><option>Cacao</option><option>Noisette</option>
+                <option>Caramel</option><option>Fruits rouges</option><option>Myrtille</option>
+                <option>Agrumes</option><option>Bergamote</option><option>Citron</option>
+                <option>Floral</option><option>Jasmin</option><option>Pêche</option>
+                <option>Abricot</option><option>Fruits tropicaux</option><option>Mangue</option>
+                <option>Ananas</option><option>Vanille</option><option>Miel</option>
+                <option>Épices</option><option>Cannelle</option><option>Vineux</option>
+                <option>Thé noir</option><option>Amande</option><option>Pomme</option>
+              </datalist>
+            </div>
+            <p class="hint">Appuyez sur Entrée ou virgule pour ajouter chaque arôme.</p>
+          </div>
+
+          <div class="field">
+            <label for="f-dateAchat">Date d'achat</label>
+            <input type="date" id="f-dateAchat">
+          </div>
+
+          <div class="field">
+            <label>Ma note</label>
+            <div class="rating-input" id="rating-input" role="radiogroup" aria-label="Note sur 5">
+              <button type="button" data-v="1" aria-label="1 sur 5">☕</button>
+              <button type="button" data-v="2" aria-label="2 sur 5">☕</button>
+              <button type="button" data-v="3" aria-label="3 sur 5">☕</button>
+              <button type="button" data-v="4" aria-label="4 sur 5">☕</button>
+              <button type="button" data-v="5" aria-label="5 sur 5">☕</button>
+            </div>
+            <input type="hidden" id="f-note" value="0">
+          </div>
+
+          <div class="field span-2">
+            <label for="f-remarques">Remarques sur le goût</label>
+            <textarea id="f-remarques" rows="4" placeholder="Corps, acidité, douceur, méthode de préparation préférée…"></textarea>
+          </div>
+
+          <div class="field span-2">
+            <label for="f-infosWeb">Infos du site (lot, ferme, producteur…)</label>
+            <textarea id="f-infosWeb" rows="4" placeholder="Rempli automatiquement par l'analyse de la page — modifiable."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="btn-cancel-form">Annuler</button>
+          <button type="submit" class="btn-primary" id="btn-save">Enregistrer</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ======== VUE TABLEAU DE BORD ======== -->
+    <section id="view-dashboard" class="view">
+      <h2 class="view-title">Tableau de bord</h2>
+      <div id="dashboard-content"></div>
+    </section>
+  </main>
+
+  <!-- ======== FICHE DÉTAIL ======== -->
+  <div class="detail-overlay" id="detail-overlay" hidden>
+    <article class="detail-sheet" id="detail-sheet"></article>
+  </div>
+
+  <!-- ======== PANNEAU OPTIONS ======== -->
+  <div class="detail-overlay" id="settings-overlay" hidden>
+    <article class="detail-sheet settings-sheet">
+      <header class="detail-topbar">
+        <button class="icon-btn" id="btn-close-settings" aria-label="Fermer">✕</button>
+        <h2 class="settings-title">Sauvegarde &amp; options</h2>
+      </header>
+      <div class="settings-body">
+        <p class="settings-section-label">Thème</p>
+        <div class="theme-picker" id="theme-picker">
+          <button class="theme-swatch" data-theme="moka"><span class="sw sw-moka"></span>Moka</button>
+          <button class="theme-swatch" data-theme="lagon"><span class="sw sw-lagon"></span>Lagon</button>
+          <button class="theme-swatch" data-theme="matcha"><span class="sw sw-matcha"></span>Matcha</button>
+        </div>
+        <p class="settings-section-label">Sauvegarde</p>
+        <p class="hint">Vos cafés sont stockés uniquement sur cet appareil. Pensez à exporter régulièrement une sauvegarde.</p>
+        <button class="btn-secondary full" id="btn-export">⬇ Exporter le catalogue (JSON)</button>
+        <label class="btn-secondary full" style="text-align:center">
+          ⬆ Importer une sauvegarde
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+        </label>
+        <p class="hint" id="settings-status"></p>
+      </div>
+    </article>
+  </div>
+
+  <!-- ======== NAVIGATION BASSE ======== -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="catalogue">
+      <span class="nav-ico">📖</span><span>Catalogue</span>
+    </button>
+    <button class="nav-btn nav-add" data-view="form" id="nav-add" aria-label="Ajouter un café">
+      <span class="nav-add-circle">+</span>
+    </button>
+    <button class="nav-btn" data-view="dashboard">
+      <span class="nav-ico">📊</span><span>Tendances</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
