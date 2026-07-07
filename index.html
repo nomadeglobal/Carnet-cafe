@@ -72,6 +72,12 @@
         </div>
       </div>
 
+      <div class="backup-banner" id="backup-banner" hidden>
+        <span id="backup-banner-text">Pensez à sauvegarder votre catalogue.</span>
+        <button class="btn-text" id="btn-banner-export">Exporter</button>
+        <button class="btn-text" id="btn-banner-close" aria-label="Fermer">✕</button>
+      </div>
+
       <p class="result-count" id="result-count"></p>
       <div class="card-grid" id="card-grid"></div>
 
@@ -266,6 +272,7 @@
           <input type="file" id="import-file" accept="application/json,.json" hidden>
         </label>
         <p class="hint" id="settings-status"></p>
+        <p class="hint" id="storage-status"></p>
       </div>
     </article>
   </div>

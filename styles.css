@@ -279,6 +279,22 @@ main { max-width: 1100px; margin: 0 auto; padding: 18px; }
 
 .result-count { color: var(--cream-faint); font-size: 13px; margin: 16px 2px 10px; }
 
+/* Bandeau de rappel de sauvegarde */
+.backup-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  background: var(--tag-bg);
+  border: 1px solid var(--line-accent);
+  border-radius: var(--radius-sm);
+  padding: 9px 8px 9px 14px;
+  font-size: 13.5px;
+  color: var(--cream);
+}
+.backup-banner span { flex: 1; }
+.backup-banner .btn-text { flex-shrink: 0; padding: 4px 8px; }
+
 /* ---------- Grille de cartes ---------- */
 .card-grid {
   display: grid;

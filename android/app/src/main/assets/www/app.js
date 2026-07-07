@@ -967,13 +967,16 @@ document.querySelectorAll(".theme-swatch").forEach((b) =>
   b.addEventListener("click", () => applyTheme(b.dataset.theme)));
 applyTheme(localStorage.getItem("carnet-theme") || "moka");
 
-$("#btn-settings").addEventListener("click", () => { $("#settings-overlay").hidden = false; });
+$("#btn-settings").addEventListener("click", () => {
+  $("#settings-overlay").hidden = false;
+  updateStorageStatus();
+});
 $("#btn-close-settings").addEventListener("click", () => { $("#settings-overlay").hidden = true; });
 $("#settings-overlay").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) e.currentTarget.hidden = true;
 });
 
-$("#btn-export").addEventListener("click", async () => {
+async function exportCatalogue() {
   const out = [];
   for (const c of coffees) {
     const { photo, ...rest } = c;
@@ -985,8 +988,58 @@ $("#btn-export").addEventListener("click", async () => {
   a.download = `carnet-cafe-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
+  localStorage.setItem("carnet-last-export", String(Date.now()));
   $("#settings-status").textContent = `Sauvegarde exportée (${coffees.length} cafés).`;
+  $("#backup-banner").hidden = true;
+  toast("Sauvegarde téléchargée ✔ Gardez-la en lieu sûr (Drive, mail…)");
+}
+
+$("#btn-export").addEventListener("click", exportCatalogue);
+
+/* ---------- Rappel de sauvegarde ---------- */
+const EXPORT_REMINDER_DAYS = 14;
+
+function checkBackupReminder() {
+  const banner = $("#backup-banner");
+  if (coffees.length < 3) { banner.hidden = true; return; }
+  const last = Number(localStorage.getItem("carnet-last-export") || 0);
+  const dismissed = Number(sessionStorage.getItem("carnet-banner-dismissed") || 0);
+  const stale = Date.now() - last > EXPORT_REMINDER_DAYS * 24 * 3600 * 1000;
+  banner.hidden = !stale || dismissed > 0;
+  if (!banner.hidden) {
+    $("#backup-banner-text").textContent = last
+      ? `Dernière sauvegarde : ${new Date(last).toLocaleDateString("fr-FR")} — pensez à exporter.`
+      : "Vos cafés ne sont stockés que sur cet appareil — exportez une sauvegarde.";
+  }
+}
+
+$("#btn-banner-export").addEventListener("click", exportCatalogue);
+$("#btn-banner-close").addEventListener("click", () => {
+  sessionStorage.setItem("carnet-banner-dismissed", "1");
+  $("#backup-banner").hidden = true;
 });
+
+/* ---------- État du stockage (panneau options) ---------- */
+async function updateStorageStatus() {
+  const el = $("#storage-status");
+  try {
+    const persisted = navigator.storage && navigator.storage.persisted
+      ? await navigator.storage.persisted() : false;
+    let usage = "";
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      if (est.usage != null) usage = ` · ${(est.usage / 1048576).toFixed(1)} Mo utilisés`;
+    }
+    const last = Number(localStorage.getItem("carnet-last-export") || 0);
+    el.textContent = (persisted
+      ? "🔒 Stockage protégé : le système ne purgera pas vos données automatiquement"
+      : "⚠ Stockage non protégé : le système peut purger les données si l'espace manque — exportez régulièrement")
+      + usage
+      + (last ? ` · dernier export : ${new Date(last).toLocaleDateString("fr-FR")}` : " · aucun export effectué");
+  } catch {
+    el.textContent = "";
+  }
+}
 
 $("#import-file").addEventListener("change", async (e) => {
   const file = e.target.files[0];
@@ -1018,11 +1071,18 @@ async function reload() {
   renderCatalogue();
   renderFilterChips();
   refreshTorrefacteurSuggestions();
+  checkBackupReminder();
 }
 
 (async function init() {
   await openDB();
   await reload();
+  checkBackupReminder();
+  // Demande au navigateur de protéger le stockage contre la purge
+  // automatique (Chrome l'accorde aux PWA installées / sites utilisés).
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
   // Dans l'APK Android (origine carnetcafe.app), les fichiers sont embarqués :
   // pas besoin de service worker.
   if ("serviceWorker" in navigator && location.hostname !== "carnetcafe.app") {
