@@ -1,6 +1,6 @@
 /* Service worker — Carnet Café
    Cache l'application pour un usage 100 % hors-ligne. */
-const CACHE = "carnet-cafe-v6";
+const CACHE = "carnet-cafe-v7";
 const ASSETS = [
   "./",
   "./index.html",

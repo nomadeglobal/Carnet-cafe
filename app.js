@@ -982,22 +982,42 @@ $("#settings-overlay").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) e.currentTarget.hidden = true;
 });
 
+function markExported() {
+  localStorage.setItem("carnet-last-export", String(Date.now()));
+  $("#settings-status").textContent = `Sauvegarde exportée (${coffees.length} cafés).`;
+  $("#backup-banner").hidden = true;
+  toast("Sauvegarde enregistrée ✔ Gardez-la en lieu sûr (carte SD, Drive, mail…)");
+}
+
+/* Appelé par l'application Android après le sélecteur de fichiers natif. */
+window.onBackupSaved = (ok) => {
+  if (ok) markExported();
+  else toast("Sauvegarde annulée");
+};
+
 async function exportCatalogue() {
   const out = [];
   for (const c of coffees) {
     const { photo, ...rest } = c;
     out.push({ ...rest, photoData: photo ? await blobToDataURL(photo) : null });
   }
-  const blob = new Blob([JSON.stringify({ app: "carnet-cafe", version: 1, coffees: out })], { type: "application/json" });
+  const json = JSON.stringify({ app: "carnet-cafe", version: 1, coffees: out });
+  const filename = `carnet-cafe-${new Date().toISOString().slice(0, 10)}.json`;
+
+  if (window.CarnetAndroid && window.CarnetAndroid.saveBackup) {
+    // APK : sélecteur natif Android — mémoire interne, carte SD, Drive…
+    // La suite (markExported) arrive via window.onBackupSaved.
+    window.CarnetAndroid.saveBackup(json, filename);
+    return;
+  }
+
+  const blob = new Blob([json], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `carnet-cafe-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
-  localStorage.setItem("carnet-last-export", String(Date.now()));
-  $("#settings-status").textContent = `Sauvegarde exportée (${coffees.length} cafés).`;
-  $("#backup-banner").hidden = true;
-  toast("Sauvegarde téléchargée ✔ Gardez-la en lieu sûr (Drive, mail…)");
+  markExported();
 }
 
 $("#btn-export").addEventListener("click", exportCatalogue);
