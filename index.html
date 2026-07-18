@@ -48,8 +48,6 @@
             <option value="createdAt-desc">Ajout récent</option>
             <option value="note-desc">Note ★ (meilleurs d'abord)</option>
             <option value="note-asc">Note ★ (croissant)</option>
-            <option value="dateAchat-desc">Date d'achat (récent)</option>
-            <option value="dateAchat-asc">Date d'achat (ancien)</option>
             <option value="dateTorrefaction-desc">Torréfaction (récente)</option>
             <option value="dateTorrefaction-asc">Torréfaction (ancienne)</option>
             <option value="altitude-desc">Altitude (plus haute)</option>
@@ -190,22 +188,33 @@
               <div class="tags" id="aromes-tags"></div>
               <input type="text" id="f-aromes-input" list="dl-aromes" placeholder="Tapez un arôme puis Entrée…">
               <datalist id="dl-aromes">
-                <option>Chocolat</option><option>Cacao</option><option>Noisette</option>
-                <option>Caramel</option><option>Fruits rouges</option><option>Myrtille</option>
-                <option>Agrumes</option><option>Bergamote</option><option>Citron</option>
-                <option>Floral</option><option>Jasmin</option><option>Pêche</option>
-                <option>Abricot</option><option>Fruits tropicaux</option><option>Mangue</option>
-                <option>Ananas</option><option>Vanille</option><option>Miel</option>
-                <option>Épices</option><option>Cannelle</option><option>Vineux</option>
-                <option>Thé noir</option><option>Amande</option><option>Pomme</option>
+                <option value="Autre…">Saisir un arôme libre</option>
+                <option>Chocolat</option><option>Chocolat noir</option><option>Cacao</option>
+                <option>Noisette</option><option>Amande</option><option>Praliné</option>
+                <option>Caramel</option><option>Toffee</option><option>Cassonade</option>
+                <option>Vanille</option><option>Miel</option><option>Sirop d'érable</option>
+                <option>Fruits rouges</option><option>Myrtille</option><option>Cassis</option>
+                <option>Cerise</option><option>Framboise</option><option>Fraise</option>
+                <option>Prune</option><option>Raisin</option><option>Fruits à noyau</option>
+                <option>Pêche</option><option>Abricot</option><option>Pomme</option>
+                <option>Pomme verte</option><option>Poire</option><option>Agrumes</option>
+                <option>Bergamote</option><option>Citron</option><option>Citron vert</option>
+                <option>Orange</option><option>Pamplemousse</option><option>Fruits tropicaux</option>
+                <option>Mangue</option><option>Ananas</option><option>Fruit de la passion</option>
+                <option>Litchi</option><option>Banane</option><option>Noix de coco</option>
+                <option>Floral</option><option>Jasmin</option><option>Rose</option>
+                <option>Hibiscus</option><option>Fleur d'oranger</option><option>Lavande</option>
+                <option>Thé noir</option><option>Thé vert</option><option>Épices</option>
+                <option>Cannelle</option><option>Cardamome</option><option>Gingembre</option>
+                <option>Muscade</option><option>Poivre</option><option>Réglisse</option>
+                <option>Vineux</option><option>Vin rouge</option><option>Rhum</option>
+                <option>Boisé</option><option>Cèdre</option><option>Tabac</option>
+                <option>Terreux</option><option>Herbacé</option><option>Menthe</option>
+                <option>Pain grillé</option><option>Brioche</option><option>Biscuit</option>
+                <option>Céréales</option><option>Malt</option><option>Beurre</option>
               </datalist>
             </div>
-            <p class="hint">Appuyez sur Entrée ou virgule pour ajouter chaque arôme.</p>
-          </div>
-
-          <div class="field">
-            <label for="f-dateAchat">Date d'achat</label>
-            <input type="date" id="f-dateAchat">
+            <p class="hint">Choisissez une suggestion ou tapez librement n'importe quel arôme, puis Entrée (ou virgule).</p>
           </div>
 
           <div class="field">
@@ -273,6 +282,7 @@
         </label>
         <p class="hint" id="settings-status"></p>
         <p class="hint" id="storage-status"></p>
+        <p class="hint" id="app-version"></p>
       </div>
     </article>
   </div>

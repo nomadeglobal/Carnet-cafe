@@ -4,6 +4,8 @@
    ============================================================ */
 "use strict";
 
+const APP_VERSION = "1.5";
+
 /* ---------- IndexedDB ---------- */
 const DB_NAME = "carnet-cafe";
 const STORE = "coffees";
@@ -260,7 +262,6 @@ function fillForm(c) {
   $("#f-torrefacteur").value = c.torrefacteur || "";
   $("#f-altitude").value = c.altitude || "";
   $("#f-dateTorrefaction").value = c.dateTorrefaction || "";
-  $("#f-dateAchat").value = c.dateAchat || "";
   $("#f-remarques").value = c.remarques || "";
   $("#f-siteUrl").value = c.siteUrl || "";
   $("#f-infosWeb").value = c.infosWeb || "";
@@ -330,6 +331,13 @@ function renderAromeTags() {
 function commitAromeInput() {
   const input = $("#f-aromes-input");
   const val = input.value.replace(/,/g, "").trim();
+  // « Autre… » choisi dans les suggestions : on libère la saisie
+  if (/^autre…?$/i.test(val)) {
+    input.value = "";
+    toast("Tapez librement votre arôme, puis Entrée");
+    input.focus();
+    return;
+  }
   if (val && !AROME_TAGS.some((a) => a.toLowerCase() === val.toLowerCase())) {
     AROME_TAGS.push(val);
     renderAromeTags();
@@ -378,7 +386,8 @@ $("#coffee-form").addEventListener("submit", async (e) => {
     altitude: $("#f-altitude").value.trim(),
     dateTorrefaction: $("#f-dateTorrefaction").value,
     aromes: [...AROME_TAGS],
-    dateAchat: $("#f-dateAchat").value,
+    // champ retiré du formulaire : on préserve la valeur des anciennes fiches
+    dateAchat: existing ? existing.dateAchat || "" : "",
     remarques: $("#f-remarques").value.trim(),
     siteUrl: $("#f-siteUrl").value.trim(),
     infosWeb: $("#f-infosWeb").value.trim(),
@@ -1101,6 +1110,7 @@ async function reload() {
 }
 
 (async function init() {
+  $("#app-version").textContent = `Carnet Café — version ${APP_VERSION}`;
   await openDB();
   await reload();
   checkBackupReminder();
